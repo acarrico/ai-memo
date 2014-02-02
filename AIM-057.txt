@@ -1,0 +1,92 @@
+Artificial Intelligence Project -- ??? and ??? Computation Center
+Memo 57--
+
+                     _MACRO_Definitions_for_LISP_
+                          by Timothy P. Hart
+
+                                        October 12, 1963
+
+In LISP 1.5 special forms are used for three logically separate
+purposes: a) to reach the alist, b) to allow functions to have an
+indefinite number of arguments, and c) to keep arguments from being
+evaluated.
+
+New LISP interpreters can easily satisfy need (a) by making the alist
+a SPECIAL-type or APVAL-type entity. Uses (b) and (c) can be replaced
+by incorporating a MACRO instruction expander in _define_. I am
+proposing such an expander.
+
+1. The property list of a macro instruction will have the indicator
+MACRO followed by a function of one argument, a form beginning with
+the macro's name, and whose value will replace the original form in
+all function definitions.
+
+2. The function _macro_[l] will define macro's just as define[l]
+defines functions.
+
+3. _define_ will be modified to make macro expansions.
+
+Examples:
+
+1. The existing FEXPR _csetq_ may be replaced by the macro definition:
+
+MACRO ((
+(CSETQ (LAMBDA (FORM) (LIST (QUOTE CSET)(LIST (QUOTE QUOTE)(CADR FORM))
+(CADDR FORM)))
+))
+
+2. A new macro _stash_ will generate the form found frequently in
+PROG's:
+
+x := cons[form;x]
+
+using the macro _stash_, one might write instead of the above:
+
+  (STASH FORM X).
+
+_Stash_ may be defined by:
+
+MACRO ((
+(STASH (LAMBDA (FORM)(LIST (QUOTE SETQ)(CADAR FORM)(LIST (CONS (CADR FORM)
+(CADAR FORM))) )))
+))
+
+3. New macros may be defined in terms of old. _enter_ is a macro for
+adding a new entry to the table (dotted pairs) stored as the value of
+a program variable.
+
+              MACRO
+  enter[form]  _=_ list[STASH;list[CONS; cadr[form];caddr[form]];
+  cadddr[form]]
+
+Incidentally, use of macros will alleviate the present difficulty
+resulting from the 90 LISP compiler's only knowing about those fexprs
+in existence at its birth.
+
+The macro defining function _macro_[l] is easily defined:
+
+macro[l] _=_ deflist[l;MACRO]
+
+The new _define_ is a little harder:
+
+define[l] _=_ deflist[mdef[l];EXPR]
+mdef[l] _=_ [
+  atom[l] -> l;
+  eq[car[l];QUOTE]->l;
+  member[car[l];(LAMBDA LABEL PROG)] ->
+cons[car[l];cons[cadr[l];mdef[caddr[l]]]];
+  get[car[l];MACRO]->mdef[get[car[l];MACRO]
+[l]]
+  T->maplist[l;λ[[j];mdef[car[j]]]]]
+
+4. The macro for _select_ illustrates the use of macros as a means of
+allowing functions of an arbitrary number of arguments:
+
+               MACRO
+  select[form]  _=_  λ[[g];
+
+list[list[LAMBDA;LIST[g];cons[COND;
+maplist[cadr[form];λ[[l];
+  [null[cdr[l]]->list[T;car[l]];
+  T->list[list[EQ;g;caar[l]];cadar[l]] ]]]
+]];cadr[form]]][gensym[]]
